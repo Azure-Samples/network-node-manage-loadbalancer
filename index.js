@@ -130,13 +130,28 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
       });
     },
     function (callback) {
+      createLoadBalancer(function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while creating the load balancer:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          lb = result;
+          console.log(util.format('\nThe load balancer has been successfully created: \n%s', 
+            util.inspect(lb, { depth: null })));
+          callback(null, lb);
+        }
+      });
+    },
+    function (callback) {
       createFrontEndIpPool(publicIP, function (err, result) {
         if (err) {
           console.log(util.format('\n???????Error occurred while creating the front end IP pool:\n%s', 
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          frontendIpPool = result;
+          lb = result;
+          frontendIpPool = lb.frontendIPConfigurations[0];
           console.log(util.format('\nThe front end IP pool has been successfully created: \n%s', 
             util.inspect(frontendIpPool, { depth: null })));
           callback(null, frontendIpPool);
@@ -150,7 +165,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          backendAdressPool = result;
+          lb = result;
+          backendAdressPool = lb.backendAddressPools[0];
           console.log(util.format('\nThe backend address pool has been successfully created: \n%s', 
             util.inspect(backendAdressPool, { depth: null })));
           callback(null, backendAdressPool);
@@ -164,7 +180,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          probe = result;
+          lb = result;
+          probe = lb.probes[0];
           console.log(util.format('\nThe health probe has been successfully created: \n%s', 
             util.inspect(probe, { depth: null })));
           callback(null, probe);
@@ -178,7 +195,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          lbRule = result;
+          lb = result;
+          lbRule = lb.loadBalancingRules[0];
           console.log(util.format('\nThe load balancer rule has been successfully created: \n%s', 
             util.inspect(lbRule, { depth: null })));
           callback(null, lbRule);
@@ -192,7 +210,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          natRule1 = result;
+          lb = result;
+          natRule1 = lb.inboundNatRules[0];
           console.log(util.format('\nThe inbound nat rule1 has been successfully created: \n%s', 
             util.inspect(natRule1, { depth: null })));
           callback(null, natRule1);
@@ -206,7 +225,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
             util.inspect(err, { depth: null })));
           callback(err);
         } else {
-          natRule2 = result;
+          lb = result;
+          natRule2 = lb.inboundNatRules[1];
           console.log(util.format('\nThe inbound nat rule2 has been successfully created: \n%s', 
             util.inspect(natRule2, { depth: null })));
           callback(null, natRule2);
@@ -214,7 +234,7 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
       });
     },
     function (callback) {
-      getLoadBalancerInfo(function (err, result {
+      getLoadBalancerInfo(function (err, result) {
         if (err) {
           console.log(util.format('\n???????Error occurred while getting the info about updated load balancer:\n%s', 
             util.inspect(err, { depth: null })));
@@ -389,6 +409,7 @@ function createLoadBalancer(callback) {
 function createFrontEndIpPool(publicIPInfo, callback) {
   console.log('\nCreating FrontEndIp pool: ' + fipName + ' on the load balancer: ' + loadBalancerName);
   var parameters = {
+    location: location,
     frontendIPConfigurations: [
       {
         name: fipName,
@@ -405,6 +426,7 @@ function createFrontEndIpPool(publicIPInfo, callback) {
 function createBackendAdressPool(callback) {
   console.log('\nCreating BackendAdress pool: ' + addressPoolName + ' on the load balancer: ' + loadBalancerName);
   var parameters = {
+    location: location,
     backendAddressPools: [
       {
         name: addressPoolName
@@ -417,6 +439,7 @@ function createBackendAdressPool(callback) {
 function createHealthProbe(callback) {
   console.log('\nCreating a health probe: ' + probeName);
   var parameters = {
+    location: location,
     probes: [
       {
         name: probeName,
@@ -434,6 +457,7 @@ function createHealthProbe(callback) {
 function createLoadBalancerRule(frontendIpPoolId, backendAddressPoolId, probeId, callback) {
   console.log('\nCreating a load balancer rule: ' + lbruleName);
   var parameters = {
+    location: location,
     loadBalancingRules: [
       {
         name: lbruleName,
@@ -461,6 +485,7 @@ function createLoadBalancerRule(frontendIpPoolId, backendAddressPoolId, probeId,
 function createInboundNatRule(rulename, frontendPort, backendPort, frontendIpPoolId, backendAddressPoolId, callback) {
   console.log('\nCreating an inbound NAT rule: ' + rulename);
   var parameters = {
+    location: location,
     inboundNatRules: [
       {
         name: rulename,
