@@ -71,7 +71,8 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
   computeClient = new ComputeManagementClient(credentials, subscriptionId);
   storageClient = new StorageManagementClient(credentials, subscriptionId);
   networkClient = new NetworkManagementClient(credentials, subscriptionId);
-  var vnet, subnet, nic1, nic2, vm1, vm2, publicIP, lb, frontendIpPool, backendAdressPool, probe, natRule1, natRule2, lbRule;
+  var vnet, subnet, nic1, nic2, vm1, vm2, publicIP, lb, updatedlb, frontendIpPool, backendAdressPool, 
+  probe, natRule1, natRule2, lbRule, vmImageInfo;
   async.series([
     function (callback) {
       createResourceGroup(function (err, result) {
@@ -211,6 +212,89 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
           callback(null, natRule2);
         }
       });
+    },
+    function (callback) {
+      getLoadBalancerInfo(function (err, result {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while getting the info about updated load balancer:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          updatedlb = result;
+          console.log(util.format('\nThe updated load balancer info is as follows: \n%s', 
+            util.inspect(updatedlb, { depth: null })));
+          callback(null, updatedlb);
+        }
+      });
+    },
+    function (callback) {
+      createNIC(networkInterfaceName1, subnet.id, backendAdressPool.id, natRule1.id, function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while creating nic1:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          nic1 = result;
+          console.log(util.format('\nNic1 has been successfully created: \n%s', 
+            util.inspect(nic1, { depth: null })));
+          callback(null, nic1);
+        }
+      });
+    },
+    function (callback) {
+      createNIC(networkInterfaceName2, subnet.id, backendAdressPool.id, natRule2.id, function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while creating nic2:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          nic2 = result;
+          console.log(util.format('\nNic2 has been successfully created: \n%s', 
+            util.inspect(nic2, { depth: null })));
+          callback(null, nic2);
+        }
+      });
+    },
+    function (callback) {
+      findVMImage(function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while finding the vm image:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          vmImageInfo = result;
+          console.log('\nFound Vm Image:\n' + util.inspect(vmImageInfo, { depth: null }));
+          callback(null, vmImageInfo);
+        }
+      });
+    },
+    function (callback) {
+      createVM(nic1.id, vmImageInfo[0].name, storageAccountName1, vmName1, function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while creating the first VM:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          vm1 = result;
+          console.log(util.format('\nFirst VM has been successfully created: \n%s', 
+            util.inspect(vm1, { depth: null })));
+          callback(null, vm1);
+        }
+      });
+    },
+    function (callback) {
+      createVM(nic2.id, vmImageInfo[0].name, storageAccountName2, vmName2, function (err, result) {
+        if (err) {
+          console.log(util.format('\n???????Error occurred while creating the second VM:\n%s', 
+            util.inspect(err, { depth: null })));
+          callback(err);
+        } else {
+          vm2 = result;
+          console.log(util.format('\nSecond VM has been successfully created: \n%s', 
+            util.inspect(vm2, { depth: null })));
+          callback(null, vm2);
+        }
+      });
     }
   ],
   //final callback to be run after all the tasks
@@ -227,18 +311,12 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
 });
 
 // Helper functions
-function createVM(finalCallback) {
-  //We could have had an async.series over here as well. However, we chose to nest
-  //the callbacks to showacase a different pattern in the sample.
-  createStorageAccount(function (err, accountInfo) {
+function createVM(nicId, vmImageVersionNumber, storageAccountName, vmName, finalCallback) {
+  createStorageAccount(storageAccountName, function (err, accountInfo) {
     if (err) return finalCallback(err);
-    findVMImage(function (err, vmImageInfo) {
+    createVirtualMachine(nicId, vmImageVersionNumber, storageAccountName, vmName, function (err, vmInfo) {
       if (err) return finalCallback(err);
-      console.log('\nFound Vm Image:\n' + util.inspect(vmImageInfo, { depth: null }));
-      createVirtualMachine(nicInfo.id, vmImageInfo[0].name, function (err, vmInfo) {
-        if (err) return finalCallback(err);
-        return finalCallback(null, vmInfo);
-      });
+      return finalCallback(null, vmInfo);
     });
   });
 }
