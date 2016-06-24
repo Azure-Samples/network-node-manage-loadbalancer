@@ -8,7 +8,6 @@
 var util = require('util');
 var msRestAzure = require('ms-rest-azure');
 var ResourceManagementClient = require('azure-arm-resource').ResourceManagementClient;
-var ComputeManagementClient = require('azure-arm-compute');
 
 _validateEnvironmentVariables();
 _validateParameters();
@@ -18,12 +17,7 @@ var secret = process.env['APPLICATION_SECRET'];
 var subscriptionId = process.env['AZURE_SUBSCRIPTION_ID'];
 var resourceGroupName = process.argv[2];
 var vmName = process.argv[3];
-var resourceClient, computeClient;
-
-function deleteVirtualMachine(callback) {
-  console.log(util.format('\nDeleting virtualMachine : %s. This operation takes time. Hence, please be patient :).', vmName));
-  return computeClient.virtualMachines.deleteMethod(resourceGroupName, vmName, callback);
-}
+var resourceClient;
 
 function deleteResourceGroup(callback) {
   console.log('\nDeleting resource group: ' + resourceGroupName);
@@ -43,8 +37,8 @@ function _validateEnvironmentVariables() {
 }
 
 function _validateParameters() {
-  if (!process.argv[2] || !process.argv[3]) {
-    throw new Error('Please provide the resource group and the virtual machine name by executing the script as follows: "node cleanup.js <resourceGroupName> <vmName>".');
+  if (!process.argv[2]) {
+    throw new Error('Please provide the resource group by executing the script as follows: "node cleanup.js <resourceGroupName>".');
   }
 }
 
@@ -52,14 +46,9 @@ function _validateParameters() {
 msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (err, credentials) {
   if (err) return console.log(err);
   resourceClient = new ResourceManagementClient(credentials, subscriptionId);
-  computeClient = new ComputeManagementClient(credentials, subscriptionId);
-  deleteVirtualMachine(function (err, result) {
-    if (err) return console.log('Error occured in deleting the virtual machine: ' + vmName + '\n' + util.inspect(err, { depth: null }));
-    console.log('Successfully deleted the virtual machine: ' + vmName);
-    console.log('\nDeleting the resource group can take few minutes, so please be patient :).');
-    deleteResourceGroup(function (err, result) {
-      if (err) return console.log('Error occured in deleting the resource group: ' + resourceGroupName + '\n' + util.inspect(err, { depth: null }));
-      console.log('Successfully deleted the resourcegroup: ' + resourceGroupName);
-    });
+  console.log('\nDeleting the resource group can take few minutes, so please be patient :).');
+  deleteResourceGroup(function (err, result) {
+    if (err) return console.log('Error occured in deleting the resource group: ' + resourceGroupName + '\n' + util.inspect(err, { depth: null }));
+    console.log('Successfully deleted the resourcegroup: ' + resourceGroupName);
   });
 });
