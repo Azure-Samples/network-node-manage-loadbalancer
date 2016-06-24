@@ -24,8 +24,8 @@ var randomIds = {};
 var location = 'southcentralus';
 var accType = 'Standard_LRS';
 var resourceGroupName = _generateRandomId('testrg', randomIds);
-var vmName1 = 'testvm1';
-var vmName2 = 'testvm2';
+var vmName1 = 'web1';
+var vmName2 = 'web2';
 var storageAccountName1 = _generateRandomId('testac1', randomIds);
 var storageAccountName2 = _generateRandomId('testac2', randomIds);
 var vnetName = _generateRandomId('testvnet', randomIds);
@@ -57,8 +57,10 @@ var osType = 'Linux';
 //var sku = '2012-r2-datacenter';
 //var osType = 'Windows';
 
-var adminUsername = 'notadmin';
-var adminPassword = 'Pa$$w0rd92';
+var adminUsername1 = 'notadmin1';
+var adminPassword1 = 'Pa$$w0rd91';
+var adminUsername2 = 'notadmin2';
+var adminPassword2 = 'Pa$$w0rd92';
 
 ///////////////////////////////////////////
 //     Entrypoint for sample script      //
@@ -211,12 +213,12 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
     },
     function (availset, callback) {
       availsetInfo = availset;
-      createVM(17, nicInfo1.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName1, vmName1, 
+      createVM(17, nicInfo1.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName1, vmName1, adminUsername1, adminPassword1,
         logOutcome(util.format(' creating VM1: %s', vmName1), callback));
     },
     function (vm1, callback) {
       vmInfo1 = vm1;
-      createVM(18, nicInfo2.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName2, vmName2, 
+      createVM(18, nicInfo2.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName2, vmName2, adminUsername2, adminPassword2,
         logOutcome(util.format('creating VM2: %s', vmName2), callback));
     }
   ],
@@ -227,12 +229,23 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
         util.inspect(err, { depth: null })));
     } else {
       vmInfo2 = vm2;
-      console.log('\n######All the operations have completed successfully.');
-      console.log(util.format('\n\n-->Please execute the following script for cleanup:\nnode cleanup.js %s', resourceGroupName));
+      console.log('\n######All the operations have completed successfully.######');
+      provideVMLoginInfoToUser('first', vmName1, frontendPort1, adminUsername1, adminPassword1);
+      provideVMLoginInfoToUser('second', vmName2, frontendPort2, adminUsername2, adminPassword2);
+      console.log(util.format('\n\n-->\tPlease execute the following script for cleanup:\n\n\t\t\tnode cleanup.js %s', resourceGroupName));
     }
     return;
   });
 });
+
+function provideVMLoginInfoToUser(num, vmName, frontendPort, adminUsername, adminPassword) {
+  console.log(util.format('\n\nLogin information for the %s VM: %s', num, vmName));
+  console.log('_____________________________________________________');
+  console.log(util.format('ssh to ip:port - %s:%s\n', publicIPInfo.ipAddress, frontendPort));
+  console.log(util.format('username       - %s\n', adminUsername));
+  console.log(util.format('password       - %s\n', adminPassword));
+  return;
+}
 
 // Helper functions
 function constructFipId() {
@@ -262,10 +275,10 @@ function logOutcome(text, callback) {
   }
 }
 
-function createVM(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, finalCallback) {
+function createVM(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, finalCallback) {
   createStorageAccount(storageAccountName, function (err, accountInfo) {
     if (err) return finalCallback(err);
-    createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, function (err, vmInfo) {
+    createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, function (err, vmInfo) {
       if (err) return finalCallback(err);
       return finalCallback(null, vmInfo);
     });
@@ -379,7 +392,7 @@ function createAvailabilitySet(callback) {
   computeClient.availabilitySets.createOrUpdate(resourceGroupName, availsetName, parameters, callback);
 }
 
-function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, callback) {
+function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, callback) {
   var vmParameters = {
     location: location,
     osProfile: {

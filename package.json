@@ -1,12 +1,13 @@
 {
-  "name": "storage-node-resource-provider-getting-started",
+  "name": "network-node-manage-loadbalancer",
+  "private": true,
   "author": "Microsoft Corporation",
   "contributors": [
     "Zavery, Amar <amzavery@microsoft.com>",
     "Hao Chen <hach@microsoft.com"
   ],
   "version": "0.1.0",
-  "description": "A sample to demonstrate managing storage accounts in Azure using node sdk.",
+  "description": "A sample to demonstrate managing loadbalancer in Azure using node sdk.",
   "tags": [
     "azure",
     "sdk"
@@ -25,10 +26,10 @@
     "ms-rest-azure": "^1.14.3",
     "async": "0.2.7"
   },
-  "homepage": "https://github.com/Azure-Samples/storage-node-resource-provider-getting-started",
+  "homepage": "https://github.com/Azure-Samples/network-node-manage-loadbalancer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Azure-Samples/storage-node-resource-provider-getting-started"
+    "url": "https://github.com/Azure-Samples/network-node-manage-loadbalancer"
   },
   "bugs": {
     "url": "https://github.com/azure/azures-sdk-for-node/issues"
