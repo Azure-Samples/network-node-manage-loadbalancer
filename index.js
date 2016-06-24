@@ -21,7 +21,7 @@ var subscriptionId = process.env['AZURE_SUBSCRIPTION_ID'];
 var resourceClient, computeClient, storageClient, networkClient;
 //Sample Config
 var randomIds = {};
-var location = 'westus';
+var location = 'southcentralus';
 var accType = 'Standard_LRS';
 var resourceGroupName = _generateRandomId('testrg', randomIds);
 var vmName1 = 'testvm1';
@@ -60,7 +60,6 @@ var osType = 'Linux';
 var adminUsername = 'notadmin';
 var adminPassword = 'Pa$$w0rd92';
 
-
 ///////////////////////////////////////////
 //     Entrypoint for sample script      //
 ///////////////////////////////////////////
@@ -71,258 +70,163 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
   computeClient = new ComputeManagementClient(credentials, subscriptionId);
   storageClient = new StorageManagementClient(credentials, subscriptionId);
   networkClient = new NetworkManagementClient(credentials, subscriptionId);
-  var vnet, subnet, nic1, nic2, vm1, vm2, publicIP, lb, updatedlb, frontendIpPool, backendAdressPool, 
-  probe, natRule1, natRule2, lbRule, vmImageInfo;
-  async.series([
+  var loadBalancerPayload = { location: location };
+  var rgInfo, vnetInfo, subnetInfo, publicIPInfo, finalLB, nicInfo1, nicInfo2, vmImageInfo, availsetInfo, vmInfo1, vmInfo2;
+  async.waterfall([
     function (callback) {
-      createResourceGroup(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating a resource group:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          console.log(util.format('\nThe resource group has been successfully created: \n%s', 
-            util.inspect(result, { depth: null })));
-          callback(null, result);
-        }
-      });
+      createResourceGroup(logOutcome(util.format('creating ResourceGroup %s', resourceGroupName), callback));
     },
-    function (callback) {
-      createVnet(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the vnet:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          vnet = result;
-          console.log(util.format('\nThe vnet has been successfully created: \n%s', 
-            util.inspect(vnet, { depth: null })));
-          callback(null, vnet);
-        }
-      });
+    function (rg, callback) {
+      rgInfo = rg;
+      createVnet(logOutcome(util.format('creating Vnet %s', vnetName), callback));
     },
-    function (callback) {
-      createSubnet(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the subnet:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          subnet = result;
-          console.log(util.format('\nThe subnet has been successfully created: \n%s', 
-            util.inspect(subnet, { depth: null })));
-          callback(null, subnet);
-        }
-      });
+    function (vnet, callback) {
+      vnetInfo = vnet;
+      createSubnet(logOutcome(util.format('creating Subnet %s', subnetName), callback));
     },
-    function (callback) {
-      createPublicIP(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the public ip:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          publicIP = result;
-          console.log(util.format('\nThe public ip has been successfully created: \n%s', 
-            util.inspect(publicIP, { depth: null })));
-          callback(null, publicIP);
-        }
-      });
+    function (subnet, callback) {
+      subnetInfo = subnet;
+      createPublicIP(logOutcome(util.format('creating PublicIP %s', publicIPName), callback));
     },
-    function (callback) {
-      createLoadBalancer(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the load balancer:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          console.log(util.format('\nThe load balancer has been successfully created: \n%s', 
-            util.inspect(lb, { depth: null })));
-          callback(null, lb);
+    function (publicIP, callback) {
+      publicIPInfo = publicIP;
+      console.log(util.format('\n5. Building a FrontEndIpPool: %s on the load balancer: %s', fipName, loadBalancerName));
+      loadBalancerPayload.frontendIPConfigurations = [
+        {
+          name: fipName,
+          privateIPAllocationMethod: 'Dynamic',
+          publicIPAddress: {
+            id: publicIPInfo.id
+          }
         }
-      });
+      ];
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createFrontEndIpPool(publicIP, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the front end IP pool:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          frontendIpPool = lb.frontendIPConfigurations[0];
-          console.log(util.format('\nThe front end IP pool has been successfully created: \n%s', 
-            util.inspect(frontendIpPool, { depth: null })));
-          callback(null, frontendIpPool);
+    function (lb, callback) {
+      console.log(util.format('\n6. Building a BackendAddressPool: %s on the load balancer: %s.\n', addressPoolName, loadBalancerName));
+      loadBalancerPayload.backendAddressPools = [
+        {
+          name: addressPoolName
         }
-      });
+      ];
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createBackendAdressPool(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the backend address pool:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          backendAdressPool = lb.backendAddressPools[0];
-          console.log(util.format('\nThe backend address pool has been successfully created: \n%s', 
-            util.inspect(backendAdressPool, { depth: null })));
-          callback(null, backendAdressPool);
+    function (lb, callback) {
+      console.log(util.format('\n7. Building a HealthProbe: %s on the load balancer: %s.\n', probeName, loadBalancerName));
+      loadBalancerPayload.probes = [
+        {
+          name: probeName,
+          protocol: 'Http',
+          port: 80,
+          intervalInSeconds: 15,
+          numberOfProbes: 4,
+          requestPath: 'healthprobe.aspx'
         }
-      });
+      ];
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createHealthProbe(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the health probe:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          probe = lb.probes[0];
-          console.log(util.format('\nThe health probe has been successfully created: \n%s', 
-            util.inspect(probe, { depth: null })));
-          callback(null, probe);
+    function (lb, callback) {
+      console.log(util.format('\n8. Building a LoadBalancerRule: %s on the load balancer: %s.\n', lbruleName, loadBalancerName));
+      loadBalancerPayload.loadBalancingRules = [
+        {
+          name: lbruleName,
+          protocol: 'tcp',
+          frontendPort: 80,
+          backendPort: 80,
+          idleTimeoutInMinutes: 4,
+          enableFloatingIP: false,
+          loadDistribution: 'Default',
+          frontendIPConfiguration: {
+            id: constructFipId()
+          },
+          backendAddressPool: {
+            id: constructBapId()
+          },
+          probe: {
+            id: constructProbeId()
+          }
         }
-      });
+      ];
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createLoadBalancerRule(frontendIpPool.id, backendAdressPool.id, probe.id, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the load balancer rule:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          lbRule = lb.loadBalancingRules[0];
-          console.log(util.format('\nThe load balancer rule has been successfully created: \n%s', 
-            util.inspect(lbRule, { depth: null })));
-          callback(null, lbRule);
+    function (lb, callback) {
+      console.log(util.format('\n9. Building InboundNATRule1: %s on the load balancer: %s.\n', natruleName1, loadBalancerName));
+      var natRule1Params = {
+        name: natruleName1,
+        protocol: 'tcp',
+        frontendPort: frontendPort1,
+        backendPort: backendPort,
+        enableFloatingIP: false,
+        idleTimeoutInMinutes: 4,
+        frontendIPConfiguration: {
+          id: constructFipId()
         }
-      });
+      };
+      loadBalancerPayload.inboundNatRules = [];
+      loadBalancerPayload.inboundNatRules.push(natRule1Params);
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createInboundNatRule(natruleName1, frontendPort1, backendPort, frontendIpPool.id, backendAdressPool.id, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the inbound nat rule1:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          natRule1 = lb.inboundNatRules[0];
-          console.log(util.format('\nThe inbound nat rule1 has been successfully created: \n%s', 
-            util.inspect(natRule1, { depth: null })));
-          callback(null, natRule1);
+    function (lb, callback) {
+      console.log(util.format('\n10. Building InboundNATRule2: %s on the load balancer: %s.\n', natruleName2, loadBalancerName));
+      var natRule2Params = {
+        name: natruleName2,
+        protocol: 'tcp',
+        frontendPort: frontendPort2,
+        backendPort: backendPort,
+        enableFloatingIP: false,
+        idleTimeoutInMinutes: 4,
+        frontendIPConfiguration: {
+          id: constructFipId()
         }
-      });
+      };
+      loadBalancerPayload.inboundNatRules.push(natRule2Params);
+      console.log(util.inspect(loadBalancerPayload, { depth: null }));
+      return callback(null, loadBalancerPayload);
     },
-    function (callback) {
-      createInboundNatRule(natruleName2, frontendPort2, backendPort, frontendIpPool.id, backendAdressPool.id, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the inbound nat rule2:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          lb = result;
-          natRule2 = lb.inboundNatRules[1];
-          console.log(util.format('\nThe inbound nat rule2 has been successfully created: \n%s', 
-            util.inspect(natRule2, { depth: null })));
-          callback(null, natRule2);
-        }
-      });
+    function (lb, callback) {
+      createLoadBalancer(loadBalancerPayload, logOutcome(util.format('creating LoadBalancer: %s', loadBalancerName), callback));
     },
-    function (callback) {
-      getLoadBalancerInfo(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while getting the info about updated load balancer:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          updatedlb = result;
-          console.log(util.format('\nThe updated load balancer info is as follows: \n%s', 
-            util.inspect(updatedlb, { depth: null })));
-          callback(null, updatedlb);
-        }
-      });
+    function (lb, callback) {
+      finalLB = lb;
+      createNIC(13, networkInterfaceName1, subnetInfo.id, finalLB.backendAddressPools[0].id, finalLB.inboundNatRules[0].id, 
+        logOutcome(util.format('creating NetworkInterface1: %s', networkInterfaceName1), callback));
     },
-    function (callback) {
-      createNIC(networkInterfaceName1, subnet.id, backendAdressPool.id, natRule1.id, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating nic1:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          nic1 = result;
-          console.log(util.format('\nNic1 has been successfully created: \n%s', 
-            util.inspect(nic1, { depth: null })));
-          callback(null, nic1);
-        }
-      });
+    function (nic1, callback) {
+      nicInfo1 = nic1;
+      createNIC(14, networkInterfaceName2, subnetInfo.id, finalLB.backendAddressPools[0].id, finalLB.inboundNatRules[1].id, 
+        logOutcome(util.format('creating NetworkInterface2: %s', networkInterfaceName2), callback));
     },
-    function (callback) {
-      createNIC(networkInterfaceName2, subnet.id, backendAdressPool.id, natRule2.id, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating nic2:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          nic2 = result;
-          console.log(util.format('\nNic2 has been successfully created: \n%s', 
-            util.inspect(nic2, { depth: null })));
-          callback(null, nic2);
-        }
-      });
+    function (nic2, callback) {
+      nicInfo2 = nic2;
+      findVMImage(logOutcome(util.format('finding VM Image'), callback));
     },
-    function (callback) {
-      findVMImage(function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while finding the vm image:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          vmImageInfo = result;
-          console.log('\nFound Vm Image:\n' + util.inspect(vmImageInfo, { depth: null }));
-          callback(null, vmImageInfo);
-        }
-      });
+    function (vmImage, callback) {
+      vmImageInfo = vmImage;
+      createAvailabilitySet(logOutcome(util.format(' creating Availabilityset: %s', availsetName), callback));
     },
-    function (callback) {
-      createVM(nic1.id, vmImageInfo[0].name, storageAccountName1, vmName1, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the first VM:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          vm1 = result;
-          console.log(util.format('\nFirst VM has been successfully created: \n%s', 
-            util.inspect(vm1, { depth: null })));
-          callback(null, vm1);
-        }
-      });
+    function (availset, callback) {
+      availsetInfo = availset;
+      createVM(17, nicInfo1.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName1, vmName1, 
+        logOutcome(util.format(' creating VM1: %s', vmName1), callback));
     },
-    function (callback) {
-      createVM(nic2.id, vmImageInfo[0].name, storageAccountName2, vmName2, function (err, result) {
-        if (err) {
-          console.log(util.format('\n???????Error occurred while creating the second VM:\n%s', 
-            util.inspect(err, { depth: null })));
-          callback(err);
-        } else {
-          vm2 = result;
-          console.log(util.format('\nSecond VM has been successfully created: \n%s', 
-            util.inspect(vm2, { depth: null })));
-          callback(null, vm2);
-        }
-      });
+    function (vm1, callback) {
+      vmInfo1 = vm1;
+      createVM(18, nicInfo2.id, availsetInfo.id, vmImageInfo[0].name, storageAccountName2, vmName2, 
+        logOutcome(util.format('creating VM2: %s', vmName2), callback));
     }
   ],
   //final callback to be run after all the tasks
-  function (err, results) {
+  function (err, vm2) {
     if (err) {
       console.log(util.format('\n??????Error occurred in one of the operations.\n%s', 
         util.inspect(err, { depth: null })));
     } else {
+      vmInfo2 = vm2;
       console.log('\n######All the operations have completed successfully.');
       console.log(util.format('\n\n-->Please execute the following script for cleanup:\nnode cleanup.js %s', resourceGroupName));
     }
@@ -331,10 +235,37 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
 });
 
 // Helper functions
-function createVM(nicId, vmImageVersionNumber, storageAccountName, vmName, finalCallback) {
+function constructFipId() {
+  return util.format('/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/loadBalancers/%s/frontendIPConfigurations/%s', 
+    subscriptionId, resourceGroupName, loadBalancerName, fipName);
+}
+
+function constructBapId() {
+  return util.format('/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/loadBalancers/%s/backendAddressPools/%s', 
+    subscriptionId, resourceGroupName, loadBalancerName, addressPoolName);
+}
+
+function constructProbeId() {
+  return util.format('/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/loadBalancers/%s/probes/%s', 
+    subscriptionId, resourceGroupName, loadBalancerName, probeName);
+}
+
+function logOutcome(text, callback) {
+  return function (err, result, req, res) {
+    if (err) {
+      console.log(util.format('\n???????Error in %s:\n%s\n', text, util.inspect(err, { depth: null })));
+      return callback(err);
+    } else {
+      console.log(util.format('\nSuccessful in %s: \n%s\n', text, util.inspect(result, { depth: null })));
+      return callback(null, result);
+    }
+  }
+}
+
+function createVM(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, finalCallback) {
   createStorageAccount(storageAccountName, function (err, accountInfo) {
     if (err) return finalCallback(err);
-    createVirtualMachine(nicId, vmImageVersionNumber, storageAccountName, vmName, function (err, vmInfo) {
+    createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, function (err, vmInfo) {
       if (err) return finalCallback(err);
       return finalCallback(null, vmInfo);
     });
@@ -343,12 +274,12 @@ function createVM(nicId, vmImageVersionNumber, storageAccountName, vmName, final
 
 function createResourceGroup(callback) {
   var groupParameters = { location: location, tags: { sampletag: 'sampleValue' } };
-  console.log('\n1.Creating resource group: ' + resourceGroupName);
+  console.log('\n1. Creating resource group: ' + resourceGroupName);
   return resourceClient.resourceGroups.createOrUpdate(resourceGroupName, groupParameters, callback);
 }
 
 function createStorageAccount(storageAccountName, callback) {
-  console.log('\n2.Creating storage account: ' + storageAccountName);
+  console.log('\n. Creating storage account: ' + storageAccountName);
   var createParameters = {
     location: location,
     sku: {
@@ -364,30 +295,26 @@ function createStorageAccount(storageAccountName, callback) {
 }
 
 function createVnet(callback) {
+  console.log('\n2. Creating Vnet: ' + vnetName);
   var vnetParameters = {
     location: location,
     addressSpace: {
       addressPrefixes: ['10.0.0.0/16']
     }
   };
-  console.log('\n3.Creating vnet: ' + vnetName);
   return networkClient.virtualNetworks.createOrUpdate(resourceGroupName, vnetName, vnetParameters, callback);
 }
 
 function createSubnet(callback) {
-  console.log('\nCreating subnet: ' + subnetName);
+  console.log('\n3. Creating subnet: ' + subnetName);
   var subnetParameters = {
     addressPrefix: '10.0.0.0/24'
   };
   return networkClient.subnets.createOrUpdate(resourceGroupName, vnetName, subnetName, subnetParameters, callback);
 }
 
-function getSubnetInfo(callback) {
-  console.log('\nGetting subnet info for: ' + subnetName);
-  return networkClient.subnets.get(resourceGroupName, vnetName, subnetName, callback);
-}
-
 function createPublicIP(callback) {
+  console.log('\n4. Creating public IP: ' + publicIPName);
   var publicIPParameters = {
     location: location,
     publicIPAllocationMethod: 'static',
@@ -396,122 +323,21 @@ function createPublicIP(callback) {
     },
     idleTimeoutInMinutes: 4
   };
-  console.log('\nCreating public IP: ' + publicIPName);
   return networkClient.publicIPAddresses.createOrUpdate(resourceGroupName, publicIPName, publicIPParameters, callback);
 }
 
-function createLoadBalancer(callback) {
-  var parameters = { location: location };
-  console.log('\nCreating Load Balancer: ' + loadBalancerName);
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
+function createLoadBalancer(loadBalancerCreateParameters, callback) {
+  console.log(util.format('\n11. Creating Load Balancer: %s with payload: \n%s\n'), loadBalancerName, util.inspect(loadBalancerCreateParameters, { depth: null }));
+  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, loadBalancerCreateParameters, callback);
 }
 
-function createFrontEndIpPool(publicIPInfo, callback) {
-  console.log('\nCreating FrontEndIp pool: ' + fipName + ' on the load balancer: ' + loadBalancerName);
-  var parameters = {
-    location: location,
-    frontendIPConfigurations: [
-      {
-        name: fipName,
-        privateIPAllocationMethod: 'Dynamic',
-        publicIPAddress: {
-          id: publicIPInfo.id
-        }
-      }
-    ]
-  }
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
-}
-
-function createBackendAdressPool(callback) {
-  console.log('\nCreating BackendAdress pool: ' + addressPoolName + ' on the load balancer: ' + loadBalancerName);
-  var parameters = {
-    location: location,
-    backendAddressPools: [
-      {
-        name: addressPoolName
-      }
-    ]
-  };
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
-}
-
-function createHealthProbe(callback) {
-  console.log('\nCreating a health probe: ' + probeName);
-  var parameters = {
-    location: location,
-    probes: [
-      {
-        name: probeName,
-        protocol: 'Http',
-        port: 80,
-        intervalInSeconds: 15,
-        numberOfProbes: 4,
-        requestPath: 'healthprobe.aspx'
-      }
-    ]
-  };
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
-}
-
-function createLoadBalancerRule(frontendIpPoolId, backendAddressPoolId, probeId, callback) {
-  console.log('\nCreating a load balancer rule: ' + lbruleName);
-  var parameters = {
-    location: location,
-    loadBalancingRules: [
-      {
-        name: lbruleName,
-        protocol: 'tcp',
-        frontendPort: 80,
-        backendPort: 80,
-        idleTimeoutInMinutes: 4,
-        enableFloatingIP: false,
-        loadDistribution: 'Default',
-        frontendIPConfiguration: {
-          id: frontendIpPoolId
-        },
-        backendAddressPool: {
-          id: backendAddressPoolId
-        },
-        probe: {
-          id: probeId
-        }
-      }
-    ]
-  };
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
-}
-
-function createInboundNatRule(rulename, frontendPort, backendPort, frontendIpPoolId, backendAddressPoolId, callback) {
-  console.log('\nCreating an inbound NAT rule: ' + rulename);
-  var parameters = {
-    location: location,
-    inboundNatRules: [
-      {
-        name: rulename,
-        protocol: 'tcp',
-        frontendPort: frontendPort,
-        backendPort: backendPort,
-        enableFloatingIP: false,
-        idleTimeoutInMinutes: 4,
-        frontendIPConfiguration: {
-          id: frontendIpPoolId
-        },
-        backendAddressPool: {
-          id: backendAddressPoolId
-        }
-      }
-    ]
-  };
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, parameters, callback);
-}
 
 function getLoadBalancerInfo(callback) {
-  console.log('\nGetting information about load balancer: ' + loadBalancerName);
+  console.log('\n12. Getting information about load balancer: ' + loadBalancerName);
   return networkClient.loadBalancers.get(resourceGroupName, loadBalancerName, callback);
 }
 
-function createNIC(networkInterfaceName, subnetId, addressPoolId, natruleId, callback) {
+function createNIC(num, networkInterfaceName, subnetId, addressPoolId, natruleId, callback) {
   var nicParameters = {
     location: location,
     ipConfigurations: [
@@ -533,12 +359,12 @@ function createNIC(networkInterfaceName, subnetId, addressPoolId, natruleId, cal
       }
     ]
   };
-  console.log('\nCreating Network Interface: ' + networkInterfaceName);
+  console.log('\n' + num + '. Creating Network Interface: ' + networkInterfaceName);
   return networkClient.networkInterfaces.createOrUpdate(resourceGroupName, networkInterfaceName, nicParameters, callback);
 }
 
 function findVMImage(callback) {
-  console.log(util.format('\nFinding a VM Image for location %s from ' + 
+  console.log(util.format('\n15. Finding a VM Image for location %s from ' + 
                     'publisher %s with offer %s and sku %s', location, publisher, offer, sku));
   return computeClient.virtualMachineImages.list(location, publisher, offer, sku, { top: 1 }, callback);
 }
@@ -548,12 +374,12 @@ function getNICInfo(callback) {
 }
 
 function createAvailabilitySet(callback) {
-  console.log('\nCreating availabitily set: ' + availsetName);
-  var parameters = {};
+  console.log('\n16. Creating availabitily set: ' + availsetName);
+  var parameters = {location: location};
   computeClient.availabilitySets.createOrUpdate(resourceGroupName, availsetName, parameters, callback);
 }
 
-function createVirtualMachine(nicId, vmImageVersionNumber, storageAccountName, vmName, callback) {
+function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, callback) {
   var vmParameters = {
     location: location,
     osProfile: {
@@ -562,7 +388,7 @@ function createVirtualMachine(nicId, vmImageVersionNumber, storageAccountName, v
       adminPassword: adminPassword
     },
     hardwareProfile: {
-      vmSize: 'Basic_A0'
+      vmSize: 'Standard_DS1'
     },
     storageProfile: {
       imageReference: {
@@ -585,9 +411,12 @@ function createVirtualMachine(nicId, vmImageVersionNumber, storageAccountName, v
           primary: true
         }
       ]
+    },
+    availabilitySet: {
+      id: availsetId
     }
   };
-  console.log('\n6.Creating Virtual Machine: ' + vmName);
+  console.log('\n' + num + '.Creating Virtual Machine: ' + vmName);
   console.log('\n VM create parameters: ' + util.inspect(vmParameters, { depth: null }));
   computeClient.virtualMachines.createOrUpdate(resourceGroupName, vmName, vmParameters, callback);
 }
