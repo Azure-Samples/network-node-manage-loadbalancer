@@ -1,5 +1,7 @@
 # network-node-manage-loadbalancer
 Getting started on network, particularly managing a LoadBalancer in ARM (V2 REST API) in Azure using node.js
+
+![alt tag]((https://raw.githubusercontent.com/Azure-Samples/network-node-manage-loadbalancer/master/lb.JPG?token=AET9B60jpStGXCH5vgiVotx1MXYVLkrXks5Xdse5wA%3D%3D)
 ## Running this sample
 
 1. Create a ResourceGroup
