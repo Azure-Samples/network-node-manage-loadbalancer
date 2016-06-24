@@ -24,8 +24,8 @@ var randomIds = {};
 var location = 'southcentralus';
 var accType = 'Standard_LRS';
 var resourceGroupName = _generateRandomId('testrg', randomIds);
-var vmName1 = 'web1';
-var vmName2 = 'web2';
+var vmName1 = 'Web1';
+var vmName2 = 'Web2';
 var storageAccountName1 = _generateRandomId('testac1', randomIds);
 var storageAccountName2 = _generateRandomId('testac2', randomIds);
 var vnetName = _generateRandomId('testvnet', randomIds);
@@ -230,17 +230,17 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
     } else {
       vmInfo2 = vm2;
       console.log('\n######All the operations have completed successfully.######');
-      provideVMLoginInfoToUser('first', vmName1, frontendPort1, adminUsername1, adminPassword1);
-      provideVMLoginInfoToUser('second', vmName2, frontendPort2, adminUsername2, adminPassword2);
-      console.log(util.format('\n\n-->\tPlease execute the following script for cleanup:\n\n\t\t\tnode cleanup.js %s', resourceGroupName));
+      provideVMLoginInfoToUser('first', publicIPInfo, vmName1, frontendPort1, adminUsername1, adminPassword1);
+      provideVMLoginInfoToUser('second', publicIPInfo, vmName2, frontendPort2, adminUsername2, adminPassword2);
+      console.log(util.format('\n\nPlease execute the following script for cleanup:\n\n\t-->\tnode cleanup.js %s', resourceGroupName));
     }
     return;
   });
 });
 
-function provideVMLoginInfoToUser(num, vmName, frontendPort, adminUsername, adminPassword) {
+function provideVMLoginInfoToUser(num, publicIPInfo, vmName, frontendPort, adminUsername, adminPassword) {
   console.log(util.format('\n\nLogin information for the %s VM: %s', num, vmName));
-  console.log('_____________________________________________________');
+  console.log('-------------------------------------------');
   console.log(util.format('ssh to ip:port - %s:%s\n', publicIPInfo.ipAddress, frontendPort));
   console.log(util.format('username       - %s\n', adminUsername));
   console.log(util.format('password       - %s\n', adminPassword));
@@ -286,7 +286,7 @@ function createVM(num, nicId, availsetId, vmImageVersionNumber, storageAccountNa
 }
 
 function createResourceGroup(callback) {
-  var groupParameters = { location: location, tags: { sampletag: 'sampleValue' } };
+  var groupParameters = { location: location, tags: { 'networkNodeLB': 'networkNodeLB' } };
   console.log('\n1. Creating resource group: ' + resourceGroupName);
   return resourceClient.resourceGroups.createOrUpdate(resourceGroupName, groupParameters, callback);
 }
