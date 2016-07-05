@@ -9,7 +9,7 @@ The following tasks will be done in this scenario:
 * Create NAT rules for remote desktop access/ SSH for virtual machines behind the load balancer
 * Create health probes
 
-![alt tag](https://raw.githubusercontent.com/Azure-Samples/network-node-manage-loadbalancer/master/lb.JPG?token=AET9B60jpStGXCH5vgiVotx1MXYVLkrXks5Xdse5wA%3D%3D)
+![alt tag](./lb.JPG)
 
 What is required to create an internet facing load balancer?
 
