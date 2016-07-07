@@ -10,12 +10,6 @@ This sample shows how to manage a load balancer using the Azure Resource Manager
 
 You can use a load balancer to provide high availability for your workloads in Azure. An Azure load balancer is a Layer-4 (TCP, UDP) type load balancer that distributes incoming traffic among healthy service instances in cloud services or virtual machines defined in a load balancer set.
 
-The sample scenario shows how to: 
-
-* Create a load balancer receiving network traffic on port 80 and send load-balanced traffic to virtual machines "web1" and "web2"
-* Create NAT rules for remote desktop access/SSH for virtual machines behind the load balancer
-* Create health probes
-
 ![alt tag](./lb.JPG)
 
 To deploy an internet-facing load balancer, you'll need to create and configure the following objects.
@@ -69,13 +63,12 @@ You can get more information about load balancer components with Azure resource 
 3. Install the dependencies.
     
 	    cd network-node-manage-loadbalancer
-	    npm install
-    
+	    npm install    
 
 4. Create an Azure service principal, using 
     [Azure CLI](https://azure.microsoft.com/documentation/articles/resource-group-authenticate-service-principal-cli/),
     [PowerShell](https://azure.microsoft.com/documentation/articles/resource-group-authenticate-service-principal/)
-    or [the portal](https://azure.microsoft.com/documentation/articles/resource-group-create-service-principal-portal/).
+    or [Azure Portal](https://azure.microsoft.com/documentation/articles/resource-group-create-service-principal-portal/).
 
 5. Set the following environment variables using the information from the service principle that you created.
     
@@ -92,9 +85,9 @@ You can get more information about load balancer components with Azure resource 
 
 7. To clean up after index.js, run the cleanup script.
     
-	    node cleanup.js <resourceGroupName> <websiteName>
+	    node cleanup.js <resourceGroupName>
 
 ## More information
 
 - [Azure SDK for Node.js](https://github.com/Azure/azure-sdk-for-node)
-- [Azure Storage Documentation](https://azure.microsoft.com/services/storage/)
+
