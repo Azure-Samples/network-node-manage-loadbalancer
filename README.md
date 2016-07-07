@@ -1,19 +1,24 @@
-# network-node-manage-loadbalancer
-Getting started on network, particularly managing a LoadBalancer in ARM (V2 REST API) in Azure using node.js
+---
+services: load-balancer
+platforms: nodejs
+author: amarzavery
+---
 
-You can use a load balancer to provide high availability for your workloads in Azure. 
-An Azure load balancer is a Layer-4 (TCP, UDP) type load balancer that distributes incoming traffic among healthy service instances in cloud services or virtual machines defined in a load balancer set.
+# Getting Started with Azure Resource Manager for load balancers in Node.js
 
-The following tasks will be done in this scenario:
-* Create a load balancer receiving network traffic on port 80 and send load balanced traffic to virtual machines "web1" and "web2"
-* Create NAT rules for remote desktop access/ SSH for virtual machines behind the load balancer
+This sample shows how to manage a load balancer using the Azure Resource Manager APIs for Node.js.
+
+You can use a load balancer to provide high availability for your workloads in Azure. An Azure load balancer is a Layer-4 (TCP, UDP) type load balancer that distributes incoming traffic among healthy service instances in cloud services or virtual machines defined in a load balancer set.
+
+The sample scenario shows how to: 
+
+* Create a load balancer receiving network traffic on port 80 and send load-balanced traffic to virtual machines "web1" and "web2"
+* Create NAT rules for remote desktop access/SSH for virtual machines behind the load balancer
 * Create health probes
 
 ![alt tag](./lb.JPG)
 
-What is required to create an internet facing load balancer?
-
-You need to create and configure the following objects to deploy a load balancer.
+To deploy an internet-facing load balancer, you'll need to create and configure the following objects.
 
 * Front end IP configuration - contains public IP addresses for incoming network traffic. 
 
@@ -29,7 +34,7 @@ You need to create and configure the following objects to deploy a load balancer
 
 * Probes - contains health probes used to check availability of virtual machines instances in the back end address pool.
 
-You can get more information about load balancer components with Azure resource manager at [Azure Resource Manager support for Load Balancer](https://azure.microsoft.com/en-us/documentation/articles/load-balancer-arm/).
+You can get more information about load balancer components with Azure resource manager at [Azure Resource Manager support for Load Balancer](https://azure.microsoft.com/documentation/articles/load-balancer-arm/).
 
 ## Tasks done in this sample
 
@@ -55,49 +60,41 @@ You can get more information about load balancer components with Azure resource 
 <a id="run"></a>
 ## Run this sample
 
-1. If you don't already have it, [get node.js](https://nodejs.org).
+1. If you don't already have it, get [node.js](https://nodejs.org).
 
 2. Clone the repository.
-
-    ```
-    git clone https://github.com:Azure-Samples/app-service-web-nodejs-manage.git
-    ```
+    
+    	git clone https://github.com:Azure-Samples/app-service-web-nodejs-manage.git
 
 3. Install the dependencies.
+    
+	    cd network-node-manage-loadbalancer
+	    npm install
+    
 
-    ```
-    cd app-service-web-nodejs-manage
-    npm install
-    ```
-
-4. Create an Azure service principal either through
+4. Create an Azure service principal, using 
     [Azure CLI](https://azure.microsoft.com/documentation/articles/resource-group-authenticate-service-principal-cli/),
     [PowerShell](https://azure.microsoft.com/documentation/articles/resource-group-authenticate-service-principal/)
     or [the portal](https://azure.microsoft.com/documentation/articles/resource-group-create-service-principal-portal/).
 
 5. Set the following environment variables using the information from the service principle that you created.
-
-    ```
-    export AZURE_SUBSCRIPION_ID={your subscription id}
-    export CLIENT_ID={your client id}
-    export APPLICATION_SECRET={your client secret}
-    export DOMAIN={your tenant id as a guid OR the domain name of your org <contosocorp.com>}
-    ```
-
+    
+	    export AZURE_SUBSCRIPION_ID={your subscription id}
+	    export CLIENT_ID={your client id}
+	    export APPLICATION_SECRET={your client secret}
+	    export DOMAIN={your tenant id as a guid OR the domain name of your org <contosocorp.com>}
+    
     > [AZURE.NOTE] On Windows, use `set` instead of `export`.
 
 6. Run the sample.
 
-    ```
-    node index.js
-    ```
+	    node index.js   
 
 7. To clean up after index.js, run the cleanup script.
-
-    ```
-    node cleanup.js <resourceGroupName> <websiteName>
-    ```
-
+    
+	    node cleanup.js <resourceGroupName> <websiteName>
 
 ## More information
-Please refer to [Azure SDK for Node](https://github.com/Azure/azure-sdk-for-node) for more information.
+
+- [Azure SDK for Node.js](https://github.com/Azure/azure-sdk-for-node)
+- [Azure Storage Documentation](https://azure.microsoft.com/services/storage/)
