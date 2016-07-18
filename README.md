@@ -10,53 +10,54 @@ This sample shows how to manage a load balancer using the Azure Resource Manager
 
 You can use a load balancer to provide high availability for your workloads in Azure. An Azure load balancer is a Layer-4 (TCP, UDP) type load balancer that distributes incoming traffic among healthy service instances in cloud services or virtual machines defined in a load balancer set.
 
+For a detailed overview of Azure load balancers, see [Azure Load Balancer overview](https://azure.microsoft.com/documentation/articles/load-balancer-overview/).
+
 ![alt tag](./lb.JPG)
+
+This sample deploys an internet-facing load balancer. It then creates and deploys two Azure virtual machines behind the load balancer. For a detailed overview of internet-facing load balancers, see [Internet-facing load balancer overview](https://azure.microsoft.com/documentation/articles/load-balancer-internet-overview/).
 
 To deploy an internet-facing load balancer, you'll need to create and configure the following objects.
 
-* Front end IP configuration - contains public IP addresses for incoming network traffic. 
-
-
-* Back end address pool - contains network interfaces (NICs) for the virtual machines to receive network traffic from the load balancer. 
-
-
-* Load balancing rules - contains rules mapping a public port on the load balancer to port in the back end address pool.
-
-
-* Inbound NAT rules - contains rules mapping a public port on the load balancer to a port for a specific virtual machine in the back end address pool.
-
-
-* Probes - contains health probes used to check availability of virtual machines instances in the back end address pool.
+- Front end IP configuration - contains public IP addresses for incoming network traffic. 
+- Back end address pool - contains network interfaces (NICs) for the virtual machines to receive network traffic from the load balancer. 
+- Load balancing rules - contains rules mapping a public port on the load balancer to port in the back end address pool.
+- Inbound NAT rules - contains rules mapping a public port on the load balancer to a port for a specific virtual machine in the back end address pool.
+- Probes - contains health probes used to check availability of virtual machines instances in the back end address pool.
 
 You can get more information about load balancer components with Azure resource manager at [Azure Resource Manager support for Load Balancer](https://azure.microsoft.com/documentation/articles/load-balancer-arm/).
 
-## Tasks done in this sample
+## Tasks performed in this sample
+
+The sample performs the following tasks to create the load balancer and the load-balanced virtual machines: 
+
 
 1. Create a ResourceGroup
-2. Create a Vnet
-3. Create a subnet
-4. Create a publicIP
-5. Build the LoadBalancer Payload
-  1. Build a FrontEndIpPool
-  2. Build a BackendAddressPool
-  3. Build a HealthProbe
-  4. Build a LoadBalancerRule
-  5. Build InboundNATRule1
-  6. Build InboundNATRule2
-6. Create the Load Balancer with the above Payload
-7. Create NIC1
-8. Create NIC2
-9. Find an Ubutnu VM Image
-10. Create an AvailabilitySet
-11. Create the first VM: Web1
-12. Create the second VM: Web2
+1. Create a Vnet
+1. Create a subnet
+1. Create a public IP
+1. Build the load balancer payload
+	1. Build a front-end IP pool
+	1. Build a back-end address pool
+	1. Build a health probe
+	1. Build a load balancer rule
+	1. Build inbound NAT rule 1
+	1. Build inbound NAT rule 2
+1. Create the load balancer with the above payload
+1. Create NIC 1
+1. Create NIC 2
+1. Find an Ubutnu VM image
+1. Create an availability set
+1. Create the first VM: Web1
+1. Create the second VM: Web2
+13. Delete the resource group and the resources created in the previous steps
 
-<a id="run"></a>
 ## Run this sample
 
-1. If you don't already have it, get [node.js](https://nodejs.org).
+1. If you don't already have a Microsoft Azure subscription, you can register for a [free trial account](http://go.microsoft.com/fwlink/?LinkId=330212).
 
-2. Clone the repository.
+1. Install [node.js](https://nodejs.org) if you haven't already.
+
+2. Clone the sample repository.
     
     	git clone https://github.com:Azure-Samples/app-service-web-nodejs-manage.git
 
@@ -72,10 +73,10 @@ You can get more information about load balancer components with Azure resource 
 
 5. Set the following environment variables using the information from the service principle that you created.
     
-	    export AZURE_SUBSCRIPION_ID={your subscription id}
-	    export CLIENT_ID={your client id}
+	    export AZURE_SUBSCRIPION_ID={your subscription ID}
+	    export CLIENT_ID={your client ID}
 	    export APPLICATION_SECRET={your client secret}
-	    export DOMAIN={your tenant id as a guid OR the domain name of your org <contosocorp.com>}
+	    export DOMAIN={your tenant ID as a guid OR the domain name of your org <contosocorp.com>}
     
     > [AZURE.NOTE] On Windows, use `set` instead of `export`.
 
@@ -90,4 +91,5 @@ You can get more information about load balancer components with Azure resource 
 ## More information
 
 - [Azure SDK for Node.js](https://github.com/Azure/azure-sdk-for-node)
+- [Azure Load Balancer overview](https://azure.microsoft.com/documentation/articles/load-balancer-overview/)
 
