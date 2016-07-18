@@ -1,3 +1,9 @@
+---
+services: networking
+platforms: nodejs
+author: amarzavery
+---
+
 # network-node-manage-loadbalancer
 Getting started on network, particularly managing a LoadBalancer in ARM (V2 REST API) in Azure using node.js
 
