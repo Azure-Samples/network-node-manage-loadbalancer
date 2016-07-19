@@ -1,5 +1,5 @@
 ---
-services: load-balancer
+services: networking
 platforms: nodejs
 author: amarzavery
 ---
