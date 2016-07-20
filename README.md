@@ -1,5 +1,5 @@
 ---
-services: virtual-network
+services: load-balancer
 platforms: nodejs
 author: amarzavery
 ---
