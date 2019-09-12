@@ -1,7 +1,11 @@
 ---
-services: load-balancer
-platforms: nodejs
-author: amarzavery
+page_type: sample
+languages:
+- javascript
+products:
+- azure
+description: "This sample shows how to manage a load balancer using the Azure Resource Manager APIs for Node.js."
+urlFragment: network-node-manage-loadbalancer
 ---
 
 # Getting Started with Azure Resource Manager for load balancers in Node.js
