@@ -6,8 +6,8 @@
 'use strict';
 
 var util = require('util');
-var msRestAzure = require('ms-rest-azure');
-var ResourceManagementClient = require('azure-arm-resource').ResourceManagementClient;
+var { ClientSecretCredential }= require('@azure/identity');
+var { ResourceManagementClient } = require('@azure/arm-resources');
 
 _validateEnvironmentVariables();
 _validateParameters();
@@ -19,9 +19,9 @@ var resourceGroupName = process.argv[2];
 var vmName = process.argv[3];
 var resourceClient;
 
-function deleteResourceGroup(callback) {
+async function deleteResourceGroup() {
   console.log('\nDeleting resource group: ' + resourceGroupName);
-  return resourceClient.resourceGroups.deleteMethod(resourceGroupName, callback);
+  return await resourceClient.resourceGroups.beginDeleteAndWait(resourceGroupName);
 }
 
 
@@ -43,12 +43,17 @@ function _validateParameters() {
 }
 
 //Entrypoint of the cleanup script
-msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (err, credentials) {
-  if (err) return console.log(err);
+try{
+  const credentials = new ClientSecretCredential(domain,clientId,secret);
   resourceClient = new ResourceManagementClient(credentials, subscriptionId);
   console.log('\nDeleting the resource group can take few minutes, so please be patient :).');
-  deleteResourceGroup(function (err, result) {
-    if (err) return console.log('Error occured in deleting the resource group: ' + resourceGroupName + '\n' + util.inspect(err, { depth: null }));
+
+  deleteResourceGroup().then((result)=>{
     console.log('Successfully deleted the resourcegroup: ' + resourceGroupName);
+  },(err)=>{
+    return console.log('Error occured in deleting the resource group: ' + resourceGroupName + '\n' + util.inspect(err, { depth: null }));
   });
-});
+
+}catch(err){
+  console.log(err);
+}
