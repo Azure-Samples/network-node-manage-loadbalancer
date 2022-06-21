@@ -7,11 +7,11 @@
 
 var util = require('util');
 var async = require('async');
-var msRestAzure = require('ms-rest-azure');
-var ComputeManagementClient = require('azure-arm-compute');
-var StorageManagementClient = require('azure-arm-storage');
-var NetworkManagementClient = require('azure-arm-network');
-var ResourceManagementClient = require('azure-arm-resource').ResourceManagementClient;
+const { ClientSecretCredential } = require("@azure/identity");
+var { ComputeManagementClient } = require('@azure/arm-compute');
+var { StorageManagementClient } = require('@azure/arm-storage');
+var { NetworkManagementClient } = require('@azure/arm-network');
+var { ResourceManagementClient } = require('@azure/arm-resources');
 
 _validateEnvironmentVariables();
 var clientId = process.env['CLIENT_ID'];
@@ -65,9 +65,8 @@ var adminPassword2 = 'Pa$$w0rd92';
 ///////////////////////////////////////////
 //     Entrypoint for sample script      //
 ///////////////////////////////////////////
-
-msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (err, credentials, subscriptions) {
-  if (err) return console.log(err);
+try{
+  const credentials = new ClientSecretCredential(domain,clientId,secret);
   resourceClient = new ResourceManagementClient(credentials, subscriptionId);
   computeClient = new ComputeManagementClient(credentials, subscriptionId);
   storageClient = new StorageManagementClient(credentials, subscriptionId);
@@ -236,7 +235,10 @@ msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain, function (
     }
     return;
   });
-});
+}catch(err){
+  console.log(err);
+}
+
 
 function provideVMLoginInfoToUser(num, publicIPInfo, vmName, frontendPort, adminUsername, adminPassword) {
   console.log(util.format('\n\nLogin information for the %s VM: %s', num, vmName));
@@ -276,22 +278,29 @@ function logOutcome(text, callback) {
 }
 
 function createVM(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, finalCallback) {
-  createStorageAccount(storageAccountName, function (err, accountInfo) {
-    if (err) return finalCallback(err);
-    createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, function (err, vmInfo) {
-      if (err) return finalCallback(err);
-      return finalCallback(null, vmInfo);
-    });
+  createStorageAccount(storageAccountName).then((accountInfo)=>{
+    createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword).then(
+      (vmInfo)=>{
+        return finalCallback(null, vmInfo);
+      },
+      (err)=>{
+        return finalCallback(err);
+      }
+    )
+  },(err)=>{
+    return finalCallback(err);
   });
 }
 
-function createResourceGroup(callback) {
+async function createResourceGroup(callback) {
   var groupParameters = { location: location, tags: { 'networkNodeLB': 'networkNodeLB' } };
   console.log('\n1. Creating resource group: ' + resourceGroupName);
-  return resourceClient.resourceGroups.createOrUpdate(resourceGroupName, groupParameters, callback);
+  return resourceClient.resourceGroups.createOrUpdate(resourceGroupName, groupParameters).then((rg)=>{
+    callback(null,rg);
+  });
 }
 
-function createStorageAccount(storageAccountName, callback) {
+async function createStorageAccount(storageAccountName) {
   console.log('\n. Creating storage account: ' + storageAccountName);
   var createParameters = {
     location: location,
@@ -304,10 +313,10 @@ function createStorageAccount(storageAccountName, callback) {
       tag2: 'val2'
     }
   };
-  return storageClient.storageAccounts.create(resourceGroupName, storageAccountName, createParameters, callback);
+  return await storageClient.storageAccounts.beginCreateAndWait(resourceGroupName, storageAccountName, createParameters);
 }
 
-function createVnet(callback) {
+async function createVnet(callback) {
   console.log('\n2. Creating Vnet: ' + vnetName);
   var vnetParameters = {
     location: location,
@@ -315,18 +324,31 @@ function createVnet(callback) {
       addressPrefixes: ['10.0.0.0/16']
     }
   };
-  return networkClient.virtualNetworks.createOrUpdate(resourceGroupName, vnetName, vnetParameters, callback);
+  
+  await networkClient.virtualNetworks.beginCreateOrUpdateAndWait(resourceGroupName, vnetName, vnetParameters);
+  return networkClient.virtualNetworks.get(resourceGroupName, vnetName).then(
+    (vnet)=>{
+      callback(null,vnet);
+    }
+  );
+  
 }
 
-function createSubnet(callback) {
+async function createSubnet(callback) {
   console.log('\n3. Creating subnet: ' + subnetName);
   var subnetParameters = {
     addressPrefix: '10.0.0.0/24'
   };
-  return networkClient.subnets.createOrUpdate(resourceGroupName, vnetName, subnetName, subnetParameters, callback);
+  await networkClient.subnets.beginCreateOrUpdateAndWait(resourceGroupName, vnetName, subnetName, subnetParameters);
+
+  return networkClient.subnets.get(resourceGroupName, vnetName, subnetName).then(
+    (subnet)=>{
+      callback(null,subnet);
+    }
+  );
 }
 
-function createPublicIP(callback) {
+async function createPublicIP(callback) {
   console.log('\n4. Creating public IP: ' + publicIPName);
   var publicIPParameters = {
     location: location,
@@ -336,21 +358,34 @@ function createPublicIP(callback) {
     },
     idleTimeoutInMinutes: 4
   };
-  return networkClient.publicIPAddresses.createOrUpdate(resourceGroupName, publicIPName, publicIPParameters, callback);
+  await networkClient.publicIPAddresses.beginCreateOrUpdateAndWait(resourceGroupName, publicIPName, publicIPParameters);
+
+  return networkClient.publicIPAddresses.get(resourceGroupName, publicIPName).then(
+    (publicIP)=>{
+      callback(null,publicIP);
+    }
+  );
 }
 
-function createLoadBalancer(loadBalancerCreateParameters, callback) {
+async function createLoadBalancer(loadBalancerCreateParameters, callback) {
   console.log(util.format('\n11. Creating Load Balancer: %s with payload: \n%s\n'), loadBalancerName, util.inspect(loadBalancerCreateParameters, { depth: null }));
-  return networkClient.loadBalancers.createOrUpdate(resourceGroupName, loadBalancerName, loadBalancerCreateParameters, callback);
+  await networkClient.loadBalancers.beginCreateOrUpdateAndWait(resourceGroupName, loadBalancerName, loadBalancerCreateParameters);
+  return networkClient.loadBalancers.get(resourceGroupName, loadBalancerName).then(
+    (lb)=>{
+      callback(null,lb);
+    }
+  );
 }
 
 
 function getLoadBalancerInfo(callback) {
   console.log('\n12. Getting information about load balancer: ' + loadBalancerName);
-  return networkClient.loadBalancers.get(resourceGroupName, loadBalancerName, callback);
+  return networkClient.loadBalancers.get(resourceGroupName, loadBalancerName).then((loadBalancer)=>{
+    callback(null,loadBalancer);
+  });
 }
 
-function createNIC(num, networkInterfaceName, subnetId, addressPoolId, natruleId, callback) {
+async function createNIC(num, networkInterfaceName, subnetId, addressPoolId, natruleId, callback) {
   var nicParameters = {
     location: location,
     ipConfigurations: [
@@ -373,26 +408,44 @@ function createNIC(num, networkInterfaceName, subnetId, addressPoolId, natruleId
     ]
   };
   console.log('\n' + num + '. Creating Network Interface: ' + networkInterfaceName);
-  return networkClient.networkInterfaces.createOrUpdate(resourceGroupName, networkInterfaceName, nicParameters, callback);
+  await networkClient.networkInterfaces.beginCreateOrUpdateAndWait(resourceGroupName, networkInterfaceName, nicParameters);
+
+  return networkClient.networkInterfaces.get(resourceGroupName, networkInterfaceName).then(
+    (nic)=>{
+      callback(null,nic);
+    }
+  );
 }
 
 function findVMImage(callback) {
   console.log(util.format('\n15. Finding a VM Image for location %s from ' + 
                     'publisher %s with offer %s and sku %s', location, publisher, offer, sku));
-  return computeClient.virtualMachineImages.list(location, publisher, offer, sku, { top: 1 }, callback);
+  return computeClient.virtualMachineImages.list(location, publisher, offer, sku, { top: 1 }).then(
+    (vmImage)=>{
+      callback(null,vmImage);
+    }
+  );
 }
 
 function getNICInfo(callback) {
-  return networkClient.networkInterfaces.get(resourceGroupName, networkInterfaceName, callback);
+  return networkClient.networkInterfaces.get(resourceGroupName, networkInterfaceName).then(
+    (nicInfo)=>{
+      callback(null,nicInfo);
+    }
+  );
 }
 
 function createAvailabilitySet(callback) {
   console.log('\n16. Creating availabitily set: ' + availsetName);
   var parameters = {location: location};
-  computeClient.availabilitySets.createOrUpdate(resourceGroupName, availsetName, parameters, callback);
+  computeClient.availabilitySets.createOrUpdate(resourceGroupName, availsetName, parameters).then(
+    (availset)=>{
+      callback(null,availset);
+    }
+  );
 }
 
-function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword, callback) {
+async function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, storageAccountName, vmName, adminUsername, adminPassword) {
   var vmParameters = {
     location: location,
     osProfile: {
@@ -431,7 +484,7 @@ function createVirtualMachine(num, nicId, availsetId, vmImageVersionNumber, stor
   };
   console.log('\n' + num + '.Creating Virtual Machine: ' + vmName);
   console.log('\n VM create parameters: ' + util.inspect(vmParameters, { depth: null }));
-  computeClient.virtualMachines.createOrUpdate(resourceGroupName, vmName, vmParameters, callback);
+  return await computeClient.virtualMachines.beginCreateOrUpdateAndWait(resourceGroupName, vmName, vmParameters);
 }
 
 function _validateEnvironmentVariables() {
